@@ -22,5 +22,29 @@ public class Chesspiece : MonoBehaviour
     public ChessPieceType type;
 
     private Vector3 desiredPosistion;
-    private Vector3 desiredScale;
+    private Vector3 desiredScale = Vector3.one;
+
+    private void Update()
+    {
+        transform.position = Vector3.Lerp(transform.position, desiredPosistion, Time.deltaTime * 10);
+        transform.localScale = Vector3.Lerp(transform.localScale, desiredScale, Time.deltaTime * 10);
+    }
+
+    public virtual void SetPosition(Vector3 position, bool force = false)
+    {
+        desiredPosistion = position;
+        if (force)
+        {
+            transform.position = desiredPosistion;
+        }
+    }
+
+    public virtual void SetScale(Vector3 scale, bool force = false)
+    {
+        desiredScale = scale;
+        if (force)
+        {
+            transform.localScale = desiredScale;
+        }
+    }
 }

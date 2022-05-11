@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Chessboard : MonoBehaviour
@@ -8,6 +9,9 @@ public class Chessboard : MonoBehaviour
     [SerializeField] private float tileSize = 1.0f;
     [SerializeField] private float yOffset = 0.2f;
     [SerializeField] private Vector3 boardCenter = Vector3.zero;
+    [SerializeField] private float deathSize = 0.3f;
+    [SerializeField] private float deathSpacing = 0.3f;
+    [SerializeField] private float dragOffset = 1.5f;
 
     [Header("Prefabs & Materials")]
     [SerializeField] private GameObject[] prefabs;
@@ -15,6 +19,9 @@ public class Chessboard : MonoBehaviour
 
     //LOGIC
     private Chesspiece[,] chesspieces;
+    private Chesspiece currentlyDragging;
+    private List<Chesspiece> deadWhites = new List<Chesspiece>();
+    private List<Chesspiece> deadBlacks = new List<Chesspiece>();
     private const int TILE_COUNT_X = 8;
     private const int TILE_COUNT_Y = 8;
     private GameObject[,] tiles;
@@ -40,7 +47,7 @@ public class Chessboard : MonoBehaviour
 
         RaycastHit info;
         Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out info, 100, LayerMask.GetMask("Tile")))
+        if (Physics.Raycast(ray, out info, 100, LayerMask.GetMask("Tile", "Hover")))
         {
             // Get the indexes of the tile I've hit
             Vector2Int hitPosition = LookupTileIndex(info.transform.gameObject);
@@ -59,6 +66,37 @@ public class Chessboard : MonoBehaviour
                 currentHover = hitPosition;
                 tiles[hitPosition.x, hitPosition.y].layer = LayerMask.NameToLayer("Hover");
             }
+
+            //If we press down on the mouse
+            if (Input.GetMouseButtonDown(0))
+            {
+                if(chesspieces[hitPosition.x, hitPosition.y])
+                {
+                    //Is it our turn?
+                    if(true)
+                    {
+                        currentlyDragging = chesspieces[hitPosition.x, hitPosition.y];
+                    }
+                }
+            }
+
+            //If we release the mouse button
+            if (currentlyDragging != null && Input.GetMouseButtonUp(0))
+            {
+                Vector2Int previousPosition = new Vector2Int(currentlyDragging.currnetX, currentlyDragging.currnetY);
+
+                bool validMove = MoveTo(currentlyDragging, hitPosition.x, hitPosition.y);
+                if (!validMove)
+                {
+                    currentlyDragging.SetPosition(GetTileCenter(previousPosition.x, previousPosition.y));
+                    currentlyDragging = null;
+                }
+                else
+                {
+                    currentlyDragging = null;
+                }
+            }
+
         }
         else
         {
@@ -66,6 +104,23 @@ public class Chessboard : MonoBehaviour
             {
                 tiles[currentHover.x, currentHover.y].layer = LayerMask.NameToLayer("Tile");
                 currentHover = -Vector2Int.one;
+            }
+
+            if(currentlyDragging && Input.GetMouseButtonUp(0))
+            {
+                currentlyDragging.SetPosition(GetTileCenter(currentlyDragging.currnetX, currentlyDragging.currnetY));
+                currentlyDragging = null;
+            }
+        }
+
+        //If we're dragging a piece
+        if (currentlyDragging)
+        {
+            Plane horizontalPlane = new Plane(Vector3.up, Vector3.up * yOffset);
+            float distance = 0.0f;
+            if(horizontalPlane.Raycast(ray, out distance))
+            {
+                currentlyDragging.SetPosition(ray.GetPoint(distance) + Vector3.up * dragOffset);
             }
         }
     }
@@ -178,7 +233,7 @@ public class Chessboard : MonoBehaviour
     {
         chesspieces[x, y].currnetX = x;
         chesspieces[x, y].currnetY = y;
-        chesspieces[x, y].transform.position = GetTileCenter(x, y);
+        chesspieces[x, y].SetPosition(GetTileCenter(x, y), force);
     }
 
     private Vector3 GetTileCenter(int x, int y)
@@ -187,6 +242,49 @@ public class Chessboard : MonoBehaviour
     }
 
     // Operations
+    private bool MoveTo(Chesspiece cp, int x, int y)
+    {
+        Vector2Int previousPosition = new Vector2Int(cp.currnetX, cp.currnetY);
+
+        //Is there another piece in the target position
+        if(chesspieces[x, y] != null)
+        {
+            Chesspiece ocp = chesspieces[x, y];
+            if(cp.team == ocp.team)
+            {
+                return false;
+            }
+
+            //If its the enemy team
+            if(ocp.team == 0)
+            {
+                deadWhites.Add(ocp);
+                ocp.SetScale(Vector3.one * deathSize);
+                ocp.SetPosition(
+                    new Vector3(8 * tileSize, yOffset, -1 * tileSize)
+                    - bounds
+                    + new Vector3(tileSize / 2, 0, tileSize / 2)
+                    + (Vector3.forward * deathSpacing) * deadWhites.Count);
+            }
+            else
+            {
+                deadBlacks.Add(ocp);
+                ocp.SetScale(Vector3.one * deathSize);
+                ocp.SetPosition(
+                    new Vector3(-1 * tileSize, yOffset, 8 * tileSize)
+                    - bounds
+                    + new Vector3(tileSize / 2, 0, tileSize / 2)
+                    + (Vector3.back * deathSpacing) * deadBlacks.Count);
+            }
+        }
+
+        chesspieces[x, y] = cp;
+        chesspieces[previousPosition.x, previousPosition.y] = null;
+
+        PositionSinglePiece(x, y);
+
+        return true;
+    }
     private Vector2Int LookupTileIndex(GameObject hitInfo)
     {
         for (int x = 0; x < TILE_COUNT_X; x++)
