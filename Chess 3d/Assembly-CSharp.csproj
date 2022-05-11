@@ -57,6 +57,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Chessboard.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Chesspiece.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Pawn.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Rook.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Knight.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Bishop.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\Queen.cs" />
+    <Compile Include="Assets\Scripts\Chesspieces\King.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
